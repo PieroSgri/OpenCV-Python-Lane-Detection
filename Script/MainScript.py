@@ -1,17 +1,15 @@
 import numpy as np
 import cv2
 
+
 # Passing the video as a stream, for a live stream from a camera the parameter will be the devices ID
 video = cv2.VideoCapture("SourceVideo/Driving.mp4")
 
-# Useless at the moment, clip.read() is not launched yet so the height and width will be zero
-v_height = video.get(cv2.CAP_PROP_FRAME_WIDTH)
-v_width = video.get(cv2.CAP_PROP_FRAME_HEIGHT)
 
 # Basic cv2 operations to show the video in grayscale
 def ShowGrayscale(clip):
 
-    while(clip.isOpened()):
+    while clip.isOpened():
         ret, frame = clip.read()
 
         grayscale = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -32,12 +30,12 @@ def ApplyGrayscale(image):
 
 def CropFrame(frame):
 
-    # We define the region of interest, those value are obtained with a bit of trial and error to find best results
+    # Define the region of interest, those values are obtained with a trial and error approach
+    top_left = [frame.shape[1] / 2 - frame.shape[1] / 20, frame.shape[0] / 2 + frame.shape[0] / 6]
+    top_right = [frame.shape[1] / 2 + frame.shape[1] / 20, frame.shape[0] / 2 + frame.shape[0] / 6]
+    lower_left = [frame.shape[1] / 4, frame.shape[0]]
+    lower_right = [frame.shape[1] - frame.shape[1] / 4, frame.shape[0]]
 
-    lower_left = [frame.shape[1] / 5, frame.shape[0]]
-    lower_right = [frame.shape[1] - frame.shape[1] / 5, frame.shape[0]]
-    top_left = [frame.shape[1] / 2 - frame.shape[1] / 5, frame.shape[0] / 2 + frame.shape[0] / 12]
-    top_right = [frame.shape[1] / 2 + frame.shape[1] / 5, frame.shape[0] / 2 + frame.shape[0] / 12]
     vertices = [np.array([lower_left, top_left, top_right, lower_right], dtype=np.int32)]
 
     # Define a matrix of zeros that matches the frame height/width
@@ -65,18 +63,40 @@ def ApplyHoughLines(frame):
         frame,
         rho=6,
         theta=np.pi / 60,
-        threshold =160,
-        lines =np.array([]),
-        minLineLength=40,
-        maxLineGap=25
+        threshold=200,
+        lines=np.array([]),
+        minLineLength=100,
+        maxLineGap=2000
     )
 
     return lines
 
 
+def LinesDrawer(frame, lines, color=[0, 0, 255], thickness=3):
+
+    if lines is None:
+        return
+
+    # Make a copy of the original image
+    img = np.copy(frame)
+
+    # Create a blank image with the same size as the original
+    line_img = np.zeros((img.shape[0], img.shape[1], 3), dtype=np.uint8,)
+
+    # Draw the lines on the new blank image
+    for line in lines:
+        for x1, y1, x2, y2 in line:
+            cv2.line(line_img, (x1, y1), (x2, y2), color, thickness)
+
+    # Merge the two image, the original and the one with lines
+    img = cv2.addWeighted(img, 0.8, line_img, 1, 0)
+
+    return img
+
+
 def FrameProcessing(clip):
 
-    while (clip.isOpened()):
+    while clip.isOpened():
         ret, frame = clip.read()
 
         if frame is None:
@@ -86,16 +106,28 @@ def FrameProcessing(clip):
         grayscale = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
         # Apply Canny Edge Detection to current frame the two value are detection thresholds
-        frame = cv2.Canny(grayscale, 100, 200)
+        canny = cv2.Canny(grayscale, 100, 200)
 
         # Crop the frame, it returns the frame containing only the region of interest
-        frame = CropFrame(frame)
+        canny = CropFrame(canny)
 
-        cv2.imshow('frame', frame)
+        lines = ApplyHoughLines(canny)
+
+        for x1, y1, x2, y2 in lines[0]:
+            cv2.line(lines, (x1, y1), (x2, y2), (0, 255, 0), 2)
+
+        frame = LinesDrawer(frame, lines)
+
+        canny = cv2.cvtColor(canny, cv2.COLOR_GRAY2BGR)
+        merged_frame = np.concatenate((frame, canny), axis=0)
+
+        # Need resize or it will not fit the screen
+        merged_frame = cv2.resize(merged_frame, (1280, 720))
+
+        cv2.imshow('merged_frame', merged_frame)
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
-
 
 
 FrameProcessing(video)
