@@ -3,10 +3,11 @@ import cv2
 
 
 # Passing the video as a stream, for a live stream from a camera the parameter will be the devices ID
-video = cv2.VideoCapture("SourceVideo/Driving.mp4")
+# Need to test it on Raspberry...
+video = cv2.VideoCapture("SourceVideo/Driving2.mp4")
 
 
-# Basic cv2 operations to show the video in grayscale
+# Basic cv2 operations to open a video and show it in grayscale
 def ShowGrayscale(clip):
 
     while clip.isOpened():
@@ -22,7 +23,7 @@ def ShowGrayscale(clip):
     cv2.destroyAllWindows()
 
 
-# Helper function, just in case...
+# Helper function, delete??
 def ApplyGrayscale(image):
 
     return cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
@@ -112,6 +113,10 @@ def FrameProcessing(clip):
         canny = CropFrame(canny)
 
         lines = ApplyHoughLines(canny)
+
+        # To prevent crashing the script if lines is None type
+        if lines is None:
+            continue
 
         for x1, y1, x2, y2 in lines[0]:
             cv2.line(lines, (x1, y1), (x2, y2), (0, 255, 0), 2)
