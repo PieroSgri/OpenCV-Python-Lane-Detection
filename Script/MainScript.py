@@ -4,7 +4,7 @@ import cv2
 
 # Passing the video as a stream, for a live stream from a camera the parameter will be the devices ID
 # Need to test it on Raspberry...
-video = cv2.VideoCapture("SourceVideo/Driving2.mp4")
+video = cv2.VideoCapture("SourceVideo/Driving3.mp4")
 
 
 # Basic cv2 operations to open a video and show it in grayscale
@@ -67,7 +67,7 @@ def ApplyHoughLines(frame):
         threshold=200,
         lines=np.array([]),
         minLineLength=100,
-        maxLineGap=2000
+        maxLineGap=2500
     )
 
     return lines
