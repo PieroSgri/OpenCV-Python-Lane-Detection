@@ -1,7 +1,7 @@
 import numpy as np
 import cv2
 import time
-import matplotlib
+import matplotlib as plt
 
 def CropFrame(frame):
     # Define the region of interest, those values are obtained with a trial and error approach
@@ -53,8 +53,8 @@ def LinesDrawer(frame, lines, color=[255, 100, 0], thickness=8):
     return img
 
 
-def FrameProcessing(FullVisual=False, Resize=[True, "720p"]):
-    clip = cv2.VideoCapture("SourceVideo/Driving2.mp4")
+def FrameProcessing(FullVisual=False, Resize=[False, "720p"]):
+    clip = cv2.VideoCapture("SourceVideo/Driving1.mp4")
 
     ConvertTime = 0
     HoughTime = 0
@@ -100,6 +100,7 @@ def FrameProcessing(FullVisual=False, Resize=[True, "720p"]):
 
         startHough = time.perf_counter()
 
+        # Applying Hough Transform
         lines = cv2.HoughLinesP(
             canny,
             rho=6,
@@ -157,7 +158,7 @@ def FrameProcessing(FullVisual=False, Resize=[True, "720p"]):
 
     Bench["ConvertTime"] = ConvertTime
     Bench["HoughTime"] = HoughTime
-    Bench["ConvertTime"] = DrawTime
+    Bench["DrawTime"] = DrawTime
     Bench["VisualTime"] = VisualTime
     Bench["ConvertValues"] = ConvertValues
     Bench["HoughValues"] = HoughValues
@@ -165,8 +166,22 @@ def FrameProcessing(FullVisual=False, Resize=[True, "720p"]):
 
 
 startTotalTime = time.perf_counter()
-Benchmark = FrameProcessing(FullVisual=False, Resize=[False, '720p'])
+Benchmark = FrameProcessing(FullVisual=False, Resize=[True, '480p'])
 TotalTime = abs(startTotalTime - time.perf_counter())
+
+ConversionPercentage = (Benchmark['ConvertTime'] / TotalTime) * 100
+ConversionPercentage = round(ConversionPercentage, 2)
+HoughPercentage = (Benchmark['HoughTime'] / TotalTime) * 100
+HoughPercentage = round(HoughPercentage, 2)
+DrawPercentage = (Benchmark['DrawTime'] / TotalTime) * 100
+DrawPercentage = round(DrawPercentage, 2)
+VisualPercentage = (Benchmark['VisualTime'] / TotalTime) * 100
+VisualPercentage = round(VisualPercentage, 2)
+
 print("\nTotal elapsed time:", TotalTime, "Seconds\n")
-print(Benchmark['HoughValues'])
-print(np.std(Benchmark['HoughValues']))
+print('Time taken by Image Conversion is:', Benchmark['ConvertTime'], 'Seconds which is', ConversionPercentage, '% of total time.')
+print('Standard Deviation for Image Conversion is:', np.std(Benchmark['ConvertValues']), 'Seconds\n')
+print('Time taken by Hough Transform is:', Benchmark['HoughTime'], 'Seconds which is', HoughPercentage, '% of total time.')
+print('Standard Deviation for Hough Transform is:', np.std(Benchmark['HoughValues']), 'Seconds\n')
+print('Time taken for Drawing Lines is:', Benchmark['DrawTime'], 'Seconds which is', DrawPercentage, '% of total time.')
+print('\nTime taken for Visualizing is:', Benchmark['VisualTime'], 'Seconds which is', VisualPercentage, '% of total time.')
