@@ -1,10 +1,9 @@
 import numpy as np
 import cv2
 import time
-
+import matplotlib
 
 def CropFrame(frame):
-
     # Define the region of interest, those values are obtained with a trial and error approach
     top_left = [frame.shape[1] / 2 - frame.shape[1] / 20, frame.shape[0] / 2 + frame.shape[0] / 6]
     top_right = [frame.shape[1] / 2 + frame.shape[1] / 20, frame.shape[0] / 2 + frame.shape[0] / 6]
@@ -33,22 +32,7 @@ def CropFrame(frame):
     return frame
 
 
-def ApplyHoughLines(frame):
-    lines = cv2.HoughLinesP(
-        frame,
-        rho=6,
-        theta=np.pi / 60,
-        threshold=200,
-        lines=np.array([]),
-        minLineLength=100,
-        maxLineGap=2500
-    )
-
-    return lines
-
-
-def LinesDrawer(frame, lines, color=[0, 0, 255], thickness=3):
-
+def LinesDrawer(frame, lines, color=[255, 100, 0], thickness=8):
     if lines is None:
         return
 
@@ -56,7 +40,7 @@ def LinesDrawer(frame, lines, color=[0, 0, 255], thickness=3):
     img = np.copy(frame)
 
     # Create a blank image with the same size as the original
-    line_img = np.zeros((img.shape[0], img.shape[1], 3), dtype=np.uint8,)
+    line_img = np.zeros((img.shape[0], img.shape[1], 3), dtype=np.uint8, )
 
     # Draw the lines on the new blank image
     for line in lines:
@@ -69,17 +53,37 @@ def LinesDrawer(frame, lines, color=[0, 0, 255], thickness=3):
     return img
 
 
-def FrameProcessing():
+def FrameProcessing(FullVisual=False, Resize=[True, "720p"]):
+    clip = cv2.VideoCapture("SourceVideo/Driving2.mp4")
 
-    clip = cv2.VideoCapture("SourceVideo/Driving1.mp4")
+    ConvertTime = 0
+    HoughTime = 0
+    DrawTime = 0
+    VisualTime = 0
+
+    ConvertValues = []
+    HoughValues = []
+
+    Bench = {'ConvertTime': 0,
+             'HoughTime': 0,
+             'ConvertValues': 0,
+             'HoughValues': 0,
+             'DrawTime': 0,
+             'VisualTime': 0}
 
     while clip.isOpened():
         ret, frame = clip.read()
-
+        cv2.imwrite("original.png", frame)
         if frame is None:
             break
 
-        frame = cv2.resize(frame, (480, 360))
+        if Resize[0]:
+            if Resize[1] == '720p':
+                frame = cv2.resize(frame, (1280, 720))
+            if Resize[1] == '480p':
+                frame = cv2.resize(frame, (720, 480))
+
+        startConvert = time.perf_counter()
 
         # Transform current frame into grayscale
         grayscale = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -90,39 +94,79 @@ def FrameProcessing():
         # Crop the frame, it returns the frame containing only the region of interest
         canny = CropFrame(canny)
 
-        lines = ApplyHoughLines(canny)
+        endConvert = abs(startConvert - time.perf_counter())
+        ConvertTime = ConvertTime + endConvert
+        ConvertValues.append(endConvert)
+
+        startHough = time.perf_counter()
+
+        lines = cv2.HoughLinesP(
+            canny,
+            rho=6,
+            theta=np.pi / 60,
+            threshold=200,
+            lines=np.array([]),
+            minLineLength=100,
+            maxLineGap=2500
+        )
+
+        endHough = abs(startHough - time.perf_counter())
+        HoughTime = HoughTime + endHough
+        HoughValues.append(endHough)
 
         # To prevent crashing the script if lines is None type
         if lines is None:
             continue
 
-        for x1, y1, x2, y2 in lines[0]:
-            cv2.line(lines, (x1, y1), (x2, y2), (0, 255, 0), 2)
-
         # Draw lines on the frame
+        startDraw = time.perf_counter()
         frame = LinesDrawer(frame, lines)
+        endDraw = abs(startDraw - time.perf_counter())
+        DrawTime = DrawTime + endDraw
+        cv2.imwrite("Lines.png", frame)
+        if FullVisual:
 
-        cv2.imshow('frame', frame)
+            startFullVisual = time.perf_counter()
 
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
+            canny = cv2.cvtColor(canny, cv2.COLOR_GRAY2BGR)
+            merged_frame = np.concatenate((frame, canny), axis=0)
 
-        '''
-        canny = cv2.cvtColor(canny, cv2.COLOR_GRAY2BGR)
-        merged_frame = np.concatenate((frame, canny), axis=0)
+            # Need resize or it will not fit the screen
+            w = merged_frame.shape[1]
+            if w > 720:
+                merged_frame = cv2.resize(merged_frame, (1280, 720))
 
-        # Need resize or it will not fit the screen
-        merged_frame = cv2.resize(merged_frame, (1280, 720))
+            cv2.imshow('merged_frame', merged_frame)
 
-        cv2.imshow('merged_frame', merged_frame)
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
 
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
-        '''
+            endFullVisual = abs(startFullVisual - time.perf_counter())
+            VisualTime = VisualTime + endFullVisual
+
+        else:
+
+            startFullVisual = time.perf_counter()
+            cv2.imshow('frame', frame)
+
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+
+            endFullVisual = abs(startFullVisual - time.perf_counter())
+            VisualTime = VisualTime + endFullVisual
+
+    Bench["ConvertTime"] = ConvertTime
+    Bench["HoughTime"] = HoughTime
+    Bench["ConvertTime"] = DrawTime
+    Bench["VisualTime"] = VisualTime
+    Bench["ConvertValues"] = ConvertValues
+    Bench["HoughValues"] = HoughValues
+    return Bench
 
 
-start = time.perf_counter()
-FrameProcessing()
-end = start - time.perf_counter()
-end = abs(end)
-print("Total elapsed time:", end, "Seconds")
+startTotalTime = time.perf_counter()
+Benchmark = FrameProcessing(FullVisual=False, Resize=[False, '720p'])
+TotalTime = abs(startTotalTime - time.perf_counter())
+print("\nTotal elapsed time:", TotalTime, "Seconds\n")
+print(Benchmark['HoughValues'])
+print(np.std(Benchmark['HoughValues']))
