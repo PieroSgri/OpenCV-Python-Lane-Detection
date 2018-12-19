@@ -1,32 +1,6 @@
 import numpy as np
 import cv2
-
-
-# Passing the video as a stream, for a live stream from a camera the parameter will be the devices ID
-# Need to test it on Raspberry...
-video = cv2.VideoCapture("SourceVideo/Driving2.mp4")
-
-
-# Basic cv2 operations to open a video and show it in grayscale
-def ShowGrayscale(clip):
-
-    while clip.isOpened():
-        ret, frame = clip.read()
-
-        grayscale = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-
-        cv2.imshow('frame', grayscale)
-        if cv2.waitKey(25) & 0xFF == ord('q'):
-            break
-
-    video.release()
-    cv2.destroyAllWindows()
-
-
-# Helper function, delete??
-def ApplyGrayscale(image):
-
-    return cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+import time
 
 
 def CropFrame(frame):
@@ -67,7 +41,7 @@ def ApplyHoughLines(frame):
         threshold=200,
         lines=np.array([]),
         minLineLength=100,
-        maxLineGap=2000
+        maxLineGap=2500
     )
 
     return lines
@@ -95,13 +69,17 @@ def LinesDrawer(frame, lines, color=[0, 0, 255], thickness=3):
     return img
 
 
-def FrameProcessing(clip):
+def FrameProcessing():
+
+    clip = cv2.VideoCapture("SourceVideo/Driving1.mp4")
 
     while clip.isOpened():
         ret, frame = clip.read()
 
         if frame is None:
             break
+
+        frame = cv2.resize(frame, (480, 360))
 
         # Transform current frame into grayscale
         grayscale = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -121,8 +99,15 @@ def FrameProcessing(clip):
         for x1, y1, x2, y2 in lines[0]:
             cv2.line(lines, (x1, y1), (x2, y2), (0, 255, 0), 2)
 
+        # Draw lines on the frame
         frame = LinesDrawer(frame, lines)
 
+        cv2.imshow('frame', frame)
+
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
+        '''
         canny = cv2.cvtColor(canny, cv2.COLOR_GRAY2BGR)
         merged_frame = np.concatenate((frame, canny), axis=0)
 
@@ -133,6 +118,11 @@ def FrameProcessing(clip):
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
+        '''
 
 
-FrameProcessing(video)
+start = time.perf_counter()
+FrameProcessing()
+end = start - time.perf_counter()
+end = abs(end)
+print("Total elapsed time:", end, "Seconds")
