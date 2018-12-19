@@ -73,7 +73,7 @@ def FrameProcessing(FullVisual=False, Resize=[True, "720p"]):
 
     while clip.isOpened():
         ret, frame = clip.read()
-        cv2.imwrite("original.png", frame)
+
         if frame is None:
             break
 
@@ -123,7 +123,7 @@ def FrameProcessing(FullVisual=False, Resize=[True, "720p"]):
         frame = LinesDrawer(frame, lines)
         endDraw = abs(startDraw - time.perf_counter())
         DrawTime = DrawTime + endDraw
-        cv2.imwrite("Lines.png", frame)
+
         if FullVisual:
 
             startFullVisual = time.perf_counter()
